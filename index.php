@@ -2,6 +2,7 @@
 
 $url2 = "https://www.nih.gov/sitemap.xml?page=1";
 $page = file_get_contents($url2);
+$doc = new DOMDocument();
 
 $html = utf8_decode($page);
 
@@ -35,37 +36,43 @@ $all_locs = array_map(function ($match) {
 }, $matches[0]);
 
 
-print_r($all_locs);
 echo count($all_locs);
-$pattern2 = "/<h1.*?>.*?<\/h1.*?>/i";
-$pattern3 = "/<p.*?>.*?<\/p.*?>/i";
-$pattern4 = "/<ul.*?>.*?<\/ul.*?>/i";
-$pattern5 = "/<li.*?>.*?<\/li.*?>/i";
-$pattern5 = "/<h3.*?>.*?<\/h3.*?>/i";
-
 
 $website = $all_locs[2];
-echo "All file count is: " . count($all_locs);
+echo "All file count is: " . count($all_locs) ."\n";
 
 
-for ($i = 1; $i < 3; $i++) {
-    $page = file_get_contents($website);
+$null_counter = 0;
+for ($i = 1; $i < count($all_locs)  ; $i++) {
+    print_r($all_locs[$i]);
+    echo"\n";
+    $page = file_get_contents($all_locs[$i]);
+    $clean =  preg_replace('#<a.*?>.*?</a>#i', '', $page);
 
-    $websiteHtml = utf8_decode($page);
-    $pattern3 = "/<p.*?>.*?<\/p.*?>/i";
 
-    preg_match_all($pattern3, $websiteHtml, $matches);
+    libxml_use_internal_errors(true);
+    $doc->loadHTML($clean);
+    libxml_use_internal_errors(false);
 
-    $ps = array_map(function ($match) {
-        return strip_tags($match);
-    }, $matches[0]);
+    $xpath = new \DOMXpath($doc);
+    $articles = $xpath->query('//*[@id="page-content"]/div[3]/div/div[1]/div');
+    $content = [];
+    
+  
+    foreach ($articles as $textNode) {
+        $content[] = preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n",  $textNode->nodeValue);
+    }
+    if($content != null){
+        $myfile = fopen($i. ".txt", "w") or die("Unable to open file!");
+        fwrite($myfile, implode("\n", $content));
+        fclose($myfile);
+    }else {
+        $null_counter++;
+    }
 
-    $myfile = fopen($i . ".txt", "w") or die("Unable to open file!");
-    fwrite($myfile, implode("\n", $ps));
-    fclose($myfile);
 }
+echo "null: " . $null_counter;
 
 
 
 
-?>
